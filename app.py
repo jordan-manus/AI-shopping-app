@@ -1,40 +1,71 @@
-from flask import Flask, redirect, url_for, request
+from flask import Flask, redirect, url_for, request, flash
+from models import UsersModel
+from flask_smorest import abort
+from db import db
 
+
+# app = Flask(__name__)
+
+
+# def create_app(db_url=None):
 app = Flask(__name__)
+app.config["API_TITLE"] = "Stores REST API"
+app.config["API_VERSION"] = "v1"
+app.config["OPENAPI_VERSION"] = "3.0.3"
+app.config["OPENAPI_URL_PREFIX"] = "/"
+app.config["OPENAPI_SWAGGER_UI_PATH"] = "/swagger-ui"
+app.config[
+    "OPENAPI_SWAGGER_UI_URL"
+] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["PROPAGATE_EXCEPTIONS"] = True
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
+#     return app
 
 
-@app.route('/success/<name>')
-def success(name):
-    return 'welcome %s' %name
+# create_app("postgres://superuser:@127.0.0.1:5432/aiShoppingTool")
 
 
-@app.route('/login', methods=['POST', 'GET'])
-def login():
-    # call database to verify if user is present
+@app.post('/login')
+def login(user_data):
+    user = UsersModel.query.filter(
+            UsersModel.username == user_data["username"]
+        ).first()
 
-    #if not present in DB, redirect to register account
+    # if user and pbkdf2_sha256.verify(user_data["password"], user.password):
+    #     access_token = create_access_token(identity=user.id, fresh=True)
+    #     refresh_token = create_refresh_token(user.id)
+    #     return {"access_token": access_token, "refresh_token": refresh_token}, 200
 
-    #else return valid token and redirect to homepage
+    if user_data["password"] != user.password:
+        abort(401, message="Invalid credentials.")
+    else:
+        return {"message": "successful sign in"}
 
 
 
 # allows the user to register a brand new account
-@app.route('/register', methods=['POST'])
-def register():
-    pass
+# @app.route('/register', methods=['POST'])
+# def register():
+#     pass
 
 
-# allows the user to create/edit their initial questionnaire 
-@app.route('/questionnaire', methods=['POST', 'PUT'])
-def questionnaire():
-    pass
+# # allows the user to create/edit their initial questionnaire 
+# @app.route('/questionnaire', methods=['POST', 'PUT'])
+# def questionnaire():
+#     pass
 
 
-# allows the user to create and retrieve items from DB
-@app.route('/items', methods=['POST', 'GET'])
-def items():
-    pass
+# # allows the user to create and retrieve items from DB
+# @app.route('/items', methods=['POST', 'GET'])
+# def items():
+#     pass
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
