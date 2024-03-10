@@ -1,9 +1,12 @@
-from flask import Flask, redirect, url_for, request, flash
+from flask import Flask, redirect, url_for, request, flash, jsonify
 from models import UsersModel
 from flask_smorest import abort, Api
 from db import db
 
-from routes.login import blp as LoginBlueprint
+from flask_jwt_extended import JWTManager
+
+from routes.items import blp as ItemBlueprint
+from routes.users import blp as UserBlueprint
 
 
 def create_app(db_url=None):
@@ -23,52 +26,49 @@ def create_app(db_url=None):
 
     api = Api(app)
 
+    app.config["JWT_SECRET_KEY"] = "jordan"
+    jwt = JWTManager(app)
+
+# checks if user is admin
+    @jwt.additional_claims_loader
+    def additional_claims_to_jwt(identity):
+        # look in DB to verify is user is admin before this block of code
+        if identity ==1:
+            return {"is_admin": True}
+        return {"is_admin": False}
+    
+
+    @jwt.expired_token_loader
+    def expired_token_loader(jwt_header, jwt_payload):
+        return(
+            jsonify({"message": "The token has expired", "error": "token_expired"}),
+            401,
+        ),
+        
+    @jwt.invalid_token_loader
+    def invalid_token_loader(error):
+        return (
+            jsonify({"message": "Signature verification failed", "error": "invalid_token"}),
+            401,
+        )
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        return (
+            jsonify({
+                    "description": "Request does not contain an access token.",
+                "error": "authorization_required",
+            })
+        )
+    
+
+
+
     with app.app_context():
         db.create_all()
 
-    api.register_blueprint(LoginBlueprint)
+    api.register_blueprint(ItemBlueprint)
+    api.register_blueprint(UserBlueprint)
 
-#     return app
+    return app
 
-
-# create_app("postgres://superuser:@127.0.0.1:5432/aiShoppingTool")
-
-
-# @app.post('/login')
-# def login(user_data):
-#     user = UsersModel.query.filter(
-#             UsersModel.username == user_data["username"]
-#         ).first()
-
-#     # if user and pbkdf2_sha256.verify(user_data["password"], user.password):
-#     #     access_token = create_access_token(identity=user.id, fresh=True)
-#     #     refresh_token = create_refresh_token(user.id)
-#     #     return {"access_token": access_token, "refresh_token": refresh_token}, 200
-
-#     if user_data["password"] != user.password:
-#         abort(401, message="Invalid credentials.")
-#     else:
-#         return {"message": "successful sign in"}
-
-
-
-# allows the user to register a brand new account
-# @app.route('/register', methods=['POST'])
-# def register():
-#     pass
-
-
-# # allows the user to create/edit their initial questionnaire 
-# @app.route('/questionnaire', methods=['POST', 'PUT'])
-# def questionnaire():
-#     pass
-
-
-# # allows the user to create and retrieve items from DB
-# @app.route('/items', methods=['POST', 'GET'])
-# def items():
-#     pass
-
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
